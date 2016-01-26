@@ -5,6 +5,11 @@
 #include <kinetis.h>
 #include <pins_arduino.h>
 #include <stdint.h>
+#include <math.h>
+#include <stdlib.h>
+#include <Arduino.h>
+//#include <WProgram.h>
+//#include <usb_serial.h>
 
 #if defined(KINETISK)
 #define TSI_GENCS_LPCLKS_VAL    ((TSI0_GENCS << 3)  >> 31)
@@ -125,28 +130,36 @@
 #endif
 
 void tsi_stop(void) {
-    TSI0_GENCS = TSI0_GENCS & (~(TSI_GENCS_TSIEN | TSI_GENCS_TSIIE));
+    //TSI0_GENCS = TSI0_GENCS & (~(TSI_GENCS_TSIEN | TSI_GENCS_TSIIE));
+    TSI0_GENCS &= ~TSI_GENCS_TSIEN; // Turn TSI module off
 }
 
 void tsi_start(void) {
     *portConfigRegister(0) = PORT_PCR_MUX(0); // Need to figure out what this line does
     SIM_SCGC5 |= SIM_SCGC5_TSI;               // And this one, too
-    TSI0_GENCS = TSI0_GENCS | TSI_GENCS_TSIEN;
+    //TSI0_GENCS = TSI0_GENCS | TSI_GENCS_TSIEN;
+    TSI0_GENCS |= TSI_GENCS_TSIEN; // Enables TSI module
 }
 
+typedef enum SETUP_ERROR_CODES {NORMAL,
+                                OUT_OF_RANGE_VALUE,
+                                OUT_OF_RANGE_VALUE_NSCN,
+                                OUT_OF_RANGE_VALUE_PS
+} SETUP_ERROR_CODE;
+
+#if defined(TEENSYTOUCH_SERIAL_DEBUG)
 #define Spn(a) (Serial.println(a))
-enum SETUP_ERROR_CODES {NORMAL,
-                        OUT_OF_RANGE_VALUE};
-void interpret_setup_error_codes(SETUP_ERROR_CODES error_number) {
+void interpret_setup_error_codes(SETUP_ERROR_CODE error_number) {
     switch(error_number) {
-        case NORMAL: Spn("Normal");
-        case OUT_OF_RANGE_VALUE: Spn("A value passed as an argument was not within its valid range");
+        case NORMAL: {Spn("Normal");break;}
+        case OUT_OF_RANGE_VALUE: {Spn("A value passed as an argument was not within its valid range");break;}
     }
 }
+#endif
     
 
 #if defined(TEENSYTOUCH_DEFINES)
-SETUP_ERROR_CODES setup_tsi(
+SETUP_ERROR_CODE setup_tsi(
     (uint16_t) pen_en, /* This is set up by OR-ing (|) together the
                         * PIN0_EN - PIN23_EN defines provided, and
                         * casting as uint16_t
@@ -176,12 +189,17 @@ SETUP_ERROR_CODES setup_tsi(
 }
 
 #else
-enum TSI_READ_MODES {HARDWARE_POLL,
-                     SOFTWARE_POLL,
-                     SOFTWARE_TRIGGER};
+typedef enum ACTIVE_MODE_CLOCK_SOURCES {LPOSCCLK,  /* 1 kHz LPO clock, Low-Power OSC clock, or Bus clock */
+                                MCGIRCLK,  /* Multipurpose Clock Generator Internal Reference Clock */
+                                OSCERCLK  /* Clock provided by OSC module for peripheral use */
+                                } ACTIVE_MODE_CLOCK_SOURCE;
+typedef enum TSI_READ_MODES {HARDWARE_POLL,
+                             SOFTWARE_POLL,
+                             SOFTWARE_TRIGGER
+                             } TSI_READ_MODE;
 
-SETUP_ERROR_CODES setup_tsi(
-    (uint16_t) pen_en, /* This is set up by OR-ing (|) together the
+SETUP_ERROR_CODE setup_tsi(
+    uint16_t pen_en, /* This is set up by OR-ing (|) together the
                         * PIN0_EN - PIN23_EN defines provided, and
                         * casting as uint16_t
                         */
@@ -202,9 +220,31 @@ SETUP_ERROR_CODES setup_tsi(
                                 * differences in capacitance.
                                 * Valid values: Even numbers starting at 2
                                 *   (e.g. 2, 4, 6, ...) in microAmps
+                                */
+    uint8_t electrode_current, /* Defines how much current the current
+                                * source provides to charge the
+                                * oscillator conneced to the
+                                * electrode/pin.
+                                * Valid values: Even numbers starting at 2
+                                *   (e.g. 2, 4, 6, ...) in microAmps
+                                */
+    ACTIVE_MODE_CLOCK_SOURCE am_clock_source, /* Sets the active mode
+                                               * clock source, which
+                                               * doesn't seem to have a
+                                               * large affect on the
+                                               * results of the
+                                               * measurement at the
+                                               * moment. More testing is
+                                               * needed.
+                                               */
+    uint8_t scan_modulus, /* Determines the interval between scan
+                           * triggers in active/polling mode
+                           */
+    uint8_t am_prescaler, /* Same as the prescaler, except for the
+                           * am_clock_cource clock selection
+                           */
     /* Instead of picking the software/hardware triggering, it's set up by picking the mode in the last argument */
-    uint8_t 
-    TSI_READ_MODES(mode)) {
+    TSI_READ_MODE mode) {
     /* TSI module needs to be stopped/disabled in order to change some of its register values */
     tsi_stop();
     /* Next all flag bits are reset by writing 1 to them */
@@ -212,12 +252,39 @@ SETUP_ERROR_CODES setup_tsi(
     TSI0_GENCS |= TSI_GENCS_OUTRGF_RST(1); // Valid values: {0,1}
     TSI0_GENCS |= TSI_GENCS_EXTERF_RST(1); // Valid values: {0,1}
     TSI0_GENCS |= TSI_GENCS_OVRF_RST(1);   // Valid values: {0,1}
-    /* Haven't set up low-power modes yet, so this register bit is kept
-     * sensible for non-low-power moder
+    /* Haven't set up low-power modes yet, so these register bits are
+     * kept sensible for non-low-power mode
      */
     /* End-of-scan interrupt instead of out-of-range */
     TSI0_GENCS |= TSI_GENCS_ESOR(1);       // Valid values: {0,1}
     /* Stop TSI module in low-power modes instead of running it in all */
     TSI0_GENCS |= TSI_GENCS_STPE(1);       // Valid values: {0,1}
     
+    /* Checking and then using passed arguments one by one */
+    TSI0_PEN |= pen_en; // However it was OR-ed together is how it's going to look in the register
+    
+    if ((number_of_scans > 32) || (number_of_scans < 1)) {
+        return OUT_OF_RANGE_VALUE_NSCN;
+    } else {
+        TSI0_GENCS |= TSI_GENCS_NSCN(number_of_scans - 1);
+    }
+    
+    uint32_t valid_prescaler = 0;
+    uint32_t i;
+    for (i = 0; i < 7; ++i) {
+        if (prescaler == pow(2,i)) {
+            valid_prescaler = 1;
+            break;
+        }
+    }
+    
+    if (valid_prescaler) {
+        uint8_t prescaler_value = (uint8_t)(log(prescaler)/log(2)); // Takes the log to base 2 of the number, so that we get 0-7 again
+        TSI0_GENCS |= TSI_GENCS_PS(prescaler_value);
+    } else {
+        return OUT_OF_RANGE_VALUE_PS;
+    }
+    
+    return NORMAL;
 }
+#endif
