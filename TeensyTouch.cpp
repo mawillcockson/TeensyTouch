@@ -2,12 +2,15 @@
  * module of the Teensy (3.2).
  */
 
-//#include <kinetis.h>
-//#include <pins_arduino.h>
-//#include <stdint.h>
-//#include <math.h>
+#include <kinetis.h>
+#include <pins_arduino.h>
+#include <stdint.h>
+#include <math.h>
+//#include <Print.h>
+#include <HardwareSerial.h>
+//#include <SoftwareSerial.h>
 //#include <stdlib.h>
-//#include <Arduino.h>
+#include <Arduino.h>
 //#include <WProgram.h>
 //#include <usb_serial.h>
 #include "TeensyTouch.h"
@@ -18,6 +21,9 @@
 
 #if (!defined(TSI_SOFTWARE))
 #endif
+
+/* Compilation reasons */
+void print_tsi_register_values(PRINT_MODE print_mode);
 
 #define noop {asm volatile ("nop");}
 void wait(uint32_t num_adds_to_do) {
@@ -103,8 +109,8 @@ uint16_t default_pin2cntr_val = 1;
 /* This array holds pointers to the TSI0_CNTRn registers at the index corresponding to the Tensy pin for which they hold a capacitance value.
  * That is to say, at index 23 is the location in the chip's memory which holds Teensy pin 23's current capacitance value
  */
-volatile uint16_t* pin2cntr[] = {(uint16_t*)(&TSI0_CNTR1 + 9), // 0
-                        (uint16_t*)(&TSI0_CNTR1 + 10), // 1
+volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 10), // 1
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
@@ -118,25 +124,25 @@ volatile uint16_t* pin2cntr[] = {(uint16_t*)(&TSI0_CNTR1 + 9), // 0
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
-                        (uint16_t*)(&TSI0_CNTR1 + 13), // 15
-                        (uint16_t*)(&TSI0_CNTR1 + 0), // 16
-                        (uint16_t*)(&TSI0_CNTR1 + 10), // 17
-                        (uint16_t*)(&TSI0_CNTR1 + 8), // 18
-                        (uint16_t*)(&TSI0_CNTR1 + 7), // 19
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 13), // 15
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 0), // 16
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 10), // 17
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 8), // 18
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 7), // 19
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
-                        (uint16_t*)(&TSI0_CNTR1 + 14), // 22
-                        (uint16_t*)(&TSI0_CNTR1 + 15), // 23
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 14), // 22
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 15), // 23
                         &default_pin2cntr_val,
-                        (uint16_t*)(&TSI0_CNTR1 + 12), // 25
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 12), // 25
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
                         &default_pin2cntr_val,
-                        (uint16_t*)(&TSI0_CNTR1 + 11), // 32
-                        (uint16_t*)(&TSI0_CNTR1 + 5), // 33
+                        &default_pin2cntr_val,
+                        &default_pin2cntr_val,
+                        &default_pin2cntr_val,
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 11), // 32
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 5), // 33
                         };
 
 /* Teensy:    33, 32, 25, 23, 22, 19, 18, 17, 16, 15, 1,  0 */
@@ -145,17 +151,29 @@ volatile uint16_t* pin2cntr[] = {(uint16_t*)(&TSI0_CNTR1 + 9), // 0
 /* NOTE: Make an array of pointers to the result registers, and use that in both copy_to_buff, and in place of pin2buff[] */
 
 void copy_to_buff(void) {
+    
+    // Serial
+    //tsi_start();
+    //Serial.println("Inside copy_to_buff");
+    //Serial.print("pin 0: ");
+    //Serial.println(PIN0_VAL);
+    
     /* Copy pin values directly from the registers into the buffer array */
     uint32_t i;
     for (i = 0; i < 33; ++i) {
         buff[i] = (*pin2cntr[i]);
+        
+        // Serial
+        //Serial.println(i);
     }
     /* NOTE: Skip the inefficient copying of values that don't need to
      * be copied---like index 27---and make both arrays 16 elements long
      */
     
     // Serial
-    Serial.println("Copied pin values to buffer");
+    //Serial.println("Copied pin values to buffer");
+    
+    return;
 }
 
 void restart_tsi(void) {
@@ -168,10 +186,12 @@ void restart_tsi(void) {
      */
     
     // Serial
-    Serial.println("Restarted TSI module");
+    //Serial.println("Restarted TSI module");
+    
+    return;
 }
 
-void do_nothing_tsi(void) {noop;}
+void do_nothing_tsi(void) {noop;return;}
 
 void (*(tsi_isr_jumptable[4]))(void) = {*do_nothing_tsi, // Default: no flags set, but ISR is called???
                                        *copy_to_buff, // Just the End-of-Scan flag is set, so do the copy
@@ -192,54 +212,31 @@ uint16_t touchVal(uint8_t pin) {
     }
 }
 
-//void tsi0_isr(void) {
-    ///* This is the function that is run every time an interrupt is
-     //* triggered by the TSI module, regardless of what kind of interrupt
-     //* it was.
-     //* 
-     //* This function tries to efficiently decide what to do, and uses a
-     //* jump table to efficiently call a function to do that.
-     //*/
-    //
-     ////Serial
+void tsi0_isr(void) {
+    /* This is the function that is run every time an interrupt is
+     * triggered by the TSI module, regardless of what kind of interrupt
+     * it was.
+     * 
+     * This function tries to efficiently decide what to do, and uses a
+     * jump table to efficiently call a function to do that.
+     */
+    
+    // Serial
     //Serial.println("Inside ISR function");
-    //
-    //(*tsi_isr_jumptable[(TSI_GENCS_EOSF_VAL |
-                        //(TSI_GENCS_EXTERF_VAL << 1))])();
-//}
+    //Serial.print("TSI_GENCS_EOSF_VAL | (TSI_GENCS_EXTERF_VAL << 1): ");
+    Serial.println((TSI_GENCS_EOSF_VAL << 3) | (TSI_GENCS_OUTRGF_VAL << 2)
+                   | (TSI_GENCS_EXTERF_VAL << 1) | TSI_GENCS_OVRF_VAL,BIN);
+    //Serial.println((uint32_t)(TSI0_GENCS),BIN);
+    //print_tsi_register_values(ALL_REGISTERS);
+    
+    //{while (true) {continue;}}
+    
+    (*tsi_isr_jumptable[(TSI_GENCS_EOSF_VAL |
+                        (TSI_GENCS_EXTERF_VAL << 1))])();
+    return;
+}
 
 
-#if defined(TEENSYTOUCH_DEFINES)
-//SETUP_ERROR_CODE setup_tsi(
-    //uint16_t pen_en, /* This is set up by OR-ing (|) together the
-                        //* PIN0_EN - PIN23_EN defines provided, and
-                        //* casting as uint16_t
-                        //*/
-    //uint8_t number_of_scans, /* Defines the number of scans the TSI
-                              //* module should perform on each electrode
-                              //*/
-    //uint8_t prescaler/* Defines the value by which the TSI module's
-                        //* reference clock's frequency will be divided,
-                        //* as compared to the system clock
-                        //*/
-    //) {
-    ///* TSI module needs to be stopped/disabled in order to change some of its register values */
-    //tsi_stop();
-    ///* Next all flag bits are reset by writing 1 to them */
-    //TSI0_GENCS |= TSI_GENCS_EOSF_RST(1);   // Valid values: {0,1}
-    //TSI0_GENCS |= TSI_GENCS_OUTRGF_RST(1); // Valid values: {0,1}
-    //TSI0_GENCS |= TSI_GENCS_EXTERF_RST(1); // Valid values: {0,1}
-    //TSI0_GENCS |= TSI_GENCS_OVRF_RST(1);   // Valid values: {0,1}
-    ///* Haven't set up low-power modes yet, so this register bit is kept
-     //* sensible for non-low-power moder
-     //*/
-    //TSI0_GENCS |= TSI_GENCS_ESOR(1);       // Valid values: {0,1}
-    //
-    //
-    //
-//}
-
-#else
 SETUP_ERROR_CODE setup_tsi(
     uint16_t pen_en, /* This is set up by OR-ing (|) together the
                         * PIN0_EN - PIN23_EN defines provided, and
@@ -290,7 +287,7 @@ SETUP_ERROR_CODE setup_tsi(
     TSI_READ_MODE tsi_read_mode) {
     
     // Serial
-    Serial.println("Inside setup function");
+    //Serial.println("Inside setup function");
     
     /* Because of the magic in the start_tsi() function, it needs to be
      * called first in order to do anything with the TSI module
@@ -358,10 +355,10 @@ SETUP_ERROR_CODE setup_tsi(
     }
     
     switch (am_clock_source) {
-        case LPOSCCLK: TSI0_SCANC |= TSI_SCANC_AMCLKS(0);
-        case MCGIRCLK: TSI0_SCANC |= TSI_SCANC_AMCLKS(1);
-        case OSCERCLK: TSI0_SCANC |= TSI_SCANC_AMCLKS(2);
-        default: return OUT_OF_RANGE_VALUE_AMCLKS;
+        case LPOSCCLK: {TSI0_SCANC |= TSI_SCANC_AMCLKS(0);break;}
+        case MCGIRCLK: {TSI0_SCANC |= TSI_SCANC_AMCLKS(1);break;}
+        case OSCERCLK: {TSI0_SCANC |= TSI_SCANC_AMCLKS(2);break;}
+        default: {return OUT_OF_RANGE_VALUE_AMCLKS;}
     }
     
     /* The type definition for SMOD already limits what values can be
@@ -387,8 +384,8 @@ SETUP_ERROR_CODE setup_tsi(
     }
     
     // Serial
-    Serial.print("Done with testing, about to switch. tsi_read_mode: ");
-    Serial.println((uint8_t)tsi_read_mode);
+    //Serial.print("Done with testing, about to switch. tsi_read_mode: ");
+    //Serial.println((uint8_t)tsi_read_mode);
     
     switch (tsi_read_mode) {
         case HARDWARE_POLL: {
@@ -403,12 +400,17 @@ SETUP_ERROR_CODE setup_tsi(
              * to by a specific bit's memory register in the PEN register
              */
             TSI0_GENCS |= TSI_GENCS_STM(1); // Periodical scan
+            /* Disable end-of-scan interrupts from flooding the
+             * processor by switching to out-of-range interrupt, which
+             * is only generated in low-power mode
+             */
+            TSI0_GENCS &= ~TSI_GENCS_ESOR(1);       // Valid values: {0,1}
             /* Enable interrupts */
             TSI0_GENCS |= TSI_GENCS_TSIIE; // Enable TSI interrupt module
             TSI0_GENCS |= TSI_GENCS_ERIE;  // Enable error interupts
             
             // Serial
-            Serial.println("All interrupts enabled");
+            //Serial.println("All interrupts enabled");
             
             break;
         }
@@ -428,9 +430,9 @@ SETUP_ERROR_CODE setup_tsi(
     wait(79);
     return NORMAL;
 }
-#endif // KINETISK
 
-#ifdef TEENSYTOUCH_SERIAL_DEBUG
+
+//#ifdef TEENSYTOUCH_SERIAL_DEBUG
 
 #define Sp(a)   (Serial.print(a))
 #define Spn(a)  (Serial.println(a))
@@ -467,29 +469,59 @@ void print_tsi_register_values(PRINT_MODE print_mode) {
             Spn("TSI port values");
             nl;
             Sp("General Control and Status Register (TSI0_GENCS): ");Spnb(TSI0_GENCS);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Low-Power Mode Clock Source Selection (TSI_GENCS_LPCLKS):        ");Spnb(TSI_GENCS_LPCLKS_VAL);
             Sp("    Low-Power Mode Scan Interval (TSI_GENCS_LPSCNITV):               ");Spnb(TSI_GENCS_LPSCNITV_VAL);
-            Sp("    Number of Consecutive Scane Per Electrode (TSI_GENCS_NSCN):      ");Spnb(TSI_GENCS_NSCN_VAL);
+            Sp("    Number of Consecutive Scans Per Electrode (TSI_GENCS_NSCN):      ");Spnb(TSI_GENCS_NSCN_VAL);
             Sp("    Electrode Oscillator Prescaler (TSI_GENCS_PS):                   ");Spnb(TSI_GENCS_PS_VAL);
             Sp("    End of Scan Flag (TSI_GENCS_EOSF):                               ");Spnb(TSI_GENCS_EOSF_VAL);
             Sp("    Out of Range Flag (TSI_GENCS_OUTRGF):                            ");Spnb(TSI_GENCS_OUTRGF_VAL);
             Sp("    External Electrode Error Occured (TSI_GENCS_EXTERF):             ");Spnb(TSI_GENCS_EXTERF_VAL);
             Sp("    Overrun Error Flag (TSI_GENCS_OVRF):                             ");Spnb(TSI_GENCS_OVRF_VAL);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Scan In Progress Status (TSI_GENCS_SCNIP):                       ");Spnb(TSI_GENCS_SCNIP_VAL);
             Sp("    Software Trigger Start (TSI_GENCS_SWTS):                         ");Spnb(TSI_GENCS_SWTS_VAL);
             Sp("    Touch Sensing Input Module Enable (TSI_GENCS_TSIEN):             ");Spnb(TSI_GENCS_TSIEN_VAL);
             Sp("    Touch Sensing Input Interrupt Module Enable (TSI_GENCS_TSIIE):   ");Spnb(TSI_GENCS_TSIIE_VAL);
             Sp("    Error Interrupt Enable (TSI_GENCS_ERIE):                         ");Spnb(TSI_GENCS_ERIE_VAL);
             Sp("    End-Of-Scan or Out-Of-Range Interrupt Select (TSI_GENCS_ESOR):   ");Spnb(TSI_GENCS_ESOR_VAL);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved (don't care):                                           ");Spnb(((TSI0_GENCS << 29) >> 31));
             Sp("    Scan Trigger Mode (TSI_GENCS_STM):                               ");Spnb(TSI_GENCS_STM_VAL);
             Sp("    TSI STOP Enable while in low-power modes (TSI_GENCS_STPE):       ");Spnb(TSI_GENCS_STPE_VAL);
-            Spn("SCAN Control Register (TSI0_SCANC): ");Spnb(TSI0_SCANC);
+            Sp("SCAN Control Register (TSI0_SCANC): ");Spnb(TSI0_SCANC);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Ref OSC Charge Current Select (TSI_SCANC_REFCHRG):               ");Spnb(TSI_SCANC_REFCHRG_VAL);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    External OSC Charge Current Select (TSI_SCANC_EXTCHRG):          ");Spnb(TSI_SCANC_EXTCHRG_VAL);
             Sp("    Scan Module [Modulus] (TSI_SCANC_SMOD):                          ");Spnb(TSI_SCANC_SMOD_VAL);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Active Mode Clock Source (TSI_SCANC_AMCLKS):                     ");Spnb(TSI_SCANC_AMCLKS_VAL);
             Sp("    Active Mode Prescaler (TSI_SCANC_AMPSC):                         ");Spnb(TSI_SCANC_AMPSC_VAL);
-            Spn("Pin Enable Register (TSI0_PEN): ");Spnb(TSI0_PEN);
+            Sp("Pin Enable Register (TSI0_PEN): ");Spnb(TSI0_PEN);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Low-Power Scan Pin (TSI_PEN_LPSP_VAL):                           ");Spnb(TSI_PEN_LPSP_VAL);
             Sp("    Touch Sensing Input Pin Enable Register 15 (TSI_PEN_PEN15):      ");Spnb(TSI_PEN_PEN15_VAL);
             Sp("    Touch Sensing Input Pin Enable Register 14 (TSI_PEN_PEN14):      ");Spnb(TSI_PEN_PEN14_VAL);
@@ -507,36 +539,54 @@ void print_tsi_register_values(PRINT_MODE print_mode) {
             Sp("    Touch Sensing Input Pin Enable Register 2 (TSI_PEN_PEN2):        ");Spnb(TSI_PEN_PEN2_VAL);
             Sp("    Touch Sensing Input Pin Enable Register 1 (TSI_PEN_PEN1):        ");Spnb(TSI_PEN_PEN1_VAL);
             Sp("    Touch Sensing Input Pin Enable Register 0 (TSI_PEN_PEN0):        ");Spnb(TSI_PEN_PEN0_VAL);
-            Spn("Wake-Up Channel Counter Register (TSI0_WUCNTR): ");Spnb(TSI0_WUCNTR);
+            Sp("Wake-Up Channel Counter Register (TSI0_WUCNTR): ");Spnb(TSI0_WUCNTR);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
+            Sp("    Reserved:                                                        ");Spnb(0);
             Sp("    Touch Sensing Wake-Up Channel 16-bit Counter Value (TSI_WUCNTR): ");Spnb(TSI_WUCNTR_VAL);
-            Spn("Counter Register [15] (TSI0_CNTR15) :");Spnb(TSI0_CNTR1);
+            Sp("Counter Register [15] (TSI0_CNTR15) :");Spnb(TSI0_CNTR15);
             Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 23):           ");Spn(TSI0_CNTR15_CTN_VAL);
             Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 22):           ");Spn(TSI0_CNTR15_CTN1_VAL);
-            Spn("Counter Register [13] (TSI0_CNTR13): ");Spnb(TSI0_CNTR3);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 15):           ");Spnb(TSI0_CNTR13_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 25):           ");Spnb(TSI0_CNTR13_CTN1_VAL);
-            Spn("Counter Register [11] (TSI0_CNTR11): ");Spnb(TSI0_CNTR5);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 32):           ");Spnb(TSI0_CNTR11_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 1):            ");Spnb(TSI0_CNTR11_CTN1_VAL);
-            Spn("Counter Register [9] (TSI0_CNTR9): ");Spnb(TSI0_CNTR7);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 0):            ");Spnb(TSI0_CNTR9_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 18):           ");Spnb(TSI0_CNTR9_CTN1_VAL);
-            Spn("Counter Register [7] (TSI0_CNTR7): ");Spnb(TSI0_CNTR9);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 19):           ");Spnb(TSI0_CNTR7_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 17):           ");Spnb(TSI0_CNTR7_CTN1_VAL);
-            Spn("Counter Register [5] (TSI0_CNTR5): ");Spnb(TSI0_CNTR11);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 33):           ");Spnb(TSI0_CNTR5_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin ??):           ");Spnb(TSI0_CNTR5_CTN1_VAL);
-            Spn("Counter Register [3] (TSI0_CNTR3): ");Spnb(TSI0_CNTR13);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin ??):           ");Spnb(TSI0_CNTR3_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin ??):           ");Spnb(TSI0_CNTR3_CTN1_VAL);
-            Spn("Counter Register [1] (TSI0_CNTR1): ");Spnb(TSI0_CNTR15);
-            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin ??):           ");Spnb(TSI0_CNTR1_CTN_VAL);
-            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 16):           ");Spnb(TSI0_CNTR1_CTN1_VAL);
-            Spn("Low-Power Channel Threshold Register (TSI0_THRESHOLD): ");Spnb(TSI0_THRESHOLD);
+            Sp("Counter Register [13] (TSI0_CNTR13): ");Spnb(TSI0_CNTR13);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 15):           ");Spn(TSI0_CNTR13_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 25):           ");Spn(TSI0_CNTR13_CTN1_VAL);
+            Sp("Counter Register [11] (TSI0_CNTR11): ");Spnb(TSI0_CNTR11);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 32):           ");Spn(TSI0_CNTR11_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 1):            ");Spn(TSI0_CNTR11_CTN1_VAL);
+            Sp("Counter Register [9] (TSI0_CNTR9): ");Spnb(TSI0_CNTR9);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 0):            ");Spn(TSI0_CNTR9_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 18):           ");Spn(TSI0_CNTR9_CTN1_VAL);
+            Sp("Counter Register [7] (TSI0_CNTR7): ");Spnb(TSI0_CNTR7);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 19):           ");Spn(TSI0_CNTR7_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 17):           ");Spn(TSI0_CNTR7_CTN1_VAL);
+            Sp("Counter Register [5] (TSI0_CNTR5): ");Spnb(TSI0_CNTR5);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin 33):           ");Spn(TSI0_CNTR5_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin ??):           ");Spn(TSI0_CNTR5_CTN1_VAL);
+            Sp("Counter Register [3] (TSI0_CNTR3): ");Spnb(TSI0_CNTR3);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin ??):           ");Spn(TSI0_CNTR3_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin ??):           ");Spn(TSI0_CNTR3_CTN1_VAL);
+            Sp("Counter Register [1] (TSI0_CNTR1): ");Spnb(TSI0_CNTR1);
+            Sp("    Touch Sensing Channel 1 16-bit Counter Value (pin ??):           ");Spn(TSI0_CNTR1_CTN_VAL);
+            Sp("    Touch Sensing Channel 0 16-bit Counter Value (pin 16):           ");Spn(TSI0_CNTR1_CTN1_VAL);
+            Sp("Low-Power Channel Threshold Register (TSI0_THRESHOLD): ");Spnb(TSI0_THRESHOLD);
             Sp("    Touch Sensing Channel Low Threshold Value:                       ");Spnb(TSI_THRESHOLD_LTHH_VAL);
             Sp("    Touch Sensing Channel High Threshold Value:                      ");Spnb(TSI_THRESHOLD_HTHH_VAL);
             nl;
+            
+            break;
         }
         case CONCAT_ALL: {
             /* Print out all TSI-related port values in compact form */
@@ -557,9 +607,11 @@ void print_tsi_register_values(PRINT_MODE print_mode) {
             Spnb(TSI0_CNTR15);
             Spnb(TSI0_THRESHOLD);
             nl;
+            
+            break;
         }
-        case CONCAT_PINS: {
-            /* Print out all TSI-related port values with pins concatenated */
+        case CONCAT_SOME: {
+            /* Print out all TSI-related port values with some info concatenated */
             nl;
             Spn("TSI port values");
             nl;
@@ -603,6 +655,8 @@ void print_tsi_register_values(PRINT_MODE print_mode) {
             Sp("    Touch Sensing Channel Low Threshold Value:                       ");Spnb(TSI_THRESHOLD_LTHH_VAL);
             Sp("    Touch Sensing Channel High Threshold Value:                      ");Spnb(TSI_THRESHOLD_HTHH_VAL);
             nl;
+            
+            break;
         }
         case JUST_PINS: {
             nl;
@@ -625,9 +679,13 @@ void print_tsi_register_values(PRINT_MODE print_mode) {
             Sp("Touch Sensing Input Pin Enable Register 1 (TSI_PEN_PEN1):   ");Spnb(TSI_PEN_PEN1_VAL);
             Sp("Touch Sensing Input Pin Enable Register 0 (TSI_PEN_PEN0):   ");Spnb(TSI_PEN_PEN0_VAL);
             nl;
+            
+            break;
         }
         case JUST_COUNTERS: {
             print_touch_register_values();
+            
+            break;
         }
     }
 }
@@ -705,5 +763,5 @@ void interpret_setup_error_codes(SETUP_ERROR_CODE error_number) { // NOTE: Compl
         default: {Spn("Other error");break;}
     }
 }
-#endif // TEENSYTOUCH_SERIAL_DEBUG
+//#endif // TEENSYTOUCH_SERIAL_DEBUG
 

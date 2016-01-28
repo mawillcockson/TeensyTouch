@@ -4,6 +4,7 @@
  */
  
 #ifndef TEENSYTOUCH_H
+#ifdef KINETISK
 #define TEENSYTOUCH_H
 
 #include <kinetis.h>
@@ -19,7 +20,6 @@
 //#include <usb_serial.h>
 
 
-#ifdef KINETISK
 #define TSI_GENCS_LPCLKS_VAL    ((TSI0_GENCS << 3)  >> 31)
 #define TSI_GENCS_LPCLKS(n)	    ((n) << 28)		// Valid values: {0,1}
 #define TSI_GENCS_LPSCNITV_VAL  ((TSI0_GENCS << 4)  >> 28)
@@ -188,7 +188,7 @@ typedef enum TSI_READ_MODES {HARDWARE_POLL,
  */
 typedef enum PRINT_MODES {ALL_REGISTERS,
                           CONCAT_ALL,
-                          CONCAT_PINS,
+                          CONCAT_SOME,
                           JUST_PINS,
                           JUST_COUNTERS
 } PRINT_MODE;
@@ -260,10 +260,10 @@ SETUP_ERROR_CODE setup_tsi(
 #define noop {asm volatile ("nop");}
 #define pause_stop {while (true) {continue;}}
 
-void print_touch_register_values(void);
+void print_tsi_register_values(PRINT_MODE print_mode);
 void interpret_setup_error_codes(SETUP_ERROR_CODE error_number);
-#endif
+#endif // ifdef TEENSYTOUCH_SERIAL_DEBUG
 
-#endif
-#endif
+#endif // ifdef KINETISK
+#endif // ifndef TEENSYTOUCH_H
 
