@@ -173,27 +173,13 @@ void restart_tsi(void) {
 
 void do_nothing_tsi(void) {noop;}
 
-void (*(tsi_isr_jumptable[]))(void) = {*do_nothing_tsi, // Default: no flags set, but ISR is called???
+void (*(tsi_isr_jumptable[4]))(void) = {*do_nothing_tsi, // Default: no flags set, but ISR is called???
                                        *copy_to_buff, // Just the End-of-Scan flag is set, so do the copy
                                        *restart_tsi, // Just the error flag is set, so restart the TSI module
                                        *restart_tsi // Restart the TSI module even if both flags are set, as it's pointless to copy at the end of a scan if there's an error
                                        }; // An array of pointers to functions taking void and returning void
 
-void tsi0_isr(void) {
-    /* This is the function that is run every time an interrupt is
-     * triggered by the TSI module, regardless of what kind of interrupt
-     * it was.
-     * 
-     * This function tries to efficiently decide what to do, and uses a
-     * jump table to efficiently call a function to do that.
-     */
-    
-    (*tsi_isr_jumptable[(TSI_GENCS_EOSF_VAL |
-                        (TSI_GENCS_EXTERF_VAL << 1))])();
-    
-    // Serial
-    Serial.println("Inside ISR function");
-}
+
 
 /* Teensy:                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ... */
 //uint8_t valid_pin_numbers[] = {1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1};
@@ -205,6 +191,22 @@ uint16_t touchVal(uint8_t pin) {
         return 0;
     }
 }
+
+//void tsi0_isr(void) {
+    ///* This is the function that is run every time an interrupt is
+     //* triggered by the TSI module, regardless of what kind of interrupt
+     //* it was.
+     //* 
+     //* This function tries to efficiently decide what to do, and uses a
+     //* jump table to efficiently call a function to do that.
+     //*/
+    //
+     ////Serial
+    //Serial.println("Inside ISR function");
+    //
+    //(*tsi_isr_jumptable[(TSI_GENCS_EOSF_VAL |
+                        //(TSI_GENCS_EXTERF_VAL << 1))])();
+//}
 
 
 #if defined(TEENSYTOUCH_DEFINES)
@@ -286,6 +288,10 @@ SETUP_ERROR_CODE setup_tsi(
                            */
     /* Instead of picking the software/hardware triggering, it's set up by picking the mode in the last argument */
     TSI_READ_MODE tsi_read_mode) {
+    
+    // Serial
+    Serial.println("Inside setup function");
+    
     /* Because of the magic in the start_tsi() function, it needs to be
      * called first in order to do anything with the TSI module
      */
@@ -380,6 +386,10 @@ SETUP_ERROR_CODE setup_tsi(
         return OUT_OF_RANGE_VALUE_AMPSC;
     }
     
+    // Serial
+    Serial.print("Done with testing, about to switch. tsi_read_mode: ");
+    Serial.println((uint8_t)tsi_read_mode);
+    
     switch (tsi_read_mode) {
         case HARDWARE_POLL: {
             /* This mode sets up the TSI module for optimal scanning in
@@ -418,7 +428,7 @@ SETUP_ERROR_CODE setup_tsi(
     wait(79);
     return NORMAL;
 }
-#endif
+#endif // KINETISK
 
 #ifdef TEENSYTOUCH_SERIAL_DEBUG
 
@@ -685,6 +695,14 @@ void interpret_setup_error_codes(SETUP_ERROR_CODE error_number) { // NOTE: Compl
     switch(error_number) {
         case NORMAL: {Spn("Normal");break;}
         case OUT_OF_RANGE_VALUE: {Spn("A value passed as an argument was not within its valid range");break;}
+        case OUT_OF_RANGE_VALUE_NSCN: {Spn("Out of range: number_of_scans");break;}
+        case OUT_OF_RANGE_VALUE_PS: {Spn("Out of range: prescaler");break;}
+        case OUT_OF_RANGE_VALUE_REFCHRG: {Spn("Out of range: reference_charge");break;}
+        case OUT_OF_RANGE_VALUE_EXTCHRG: {Spn("Out of range: electrode_charge");break;}
+        case OUT_OF_RANGE_VALUE_AMCLKS: {Spn("Out of range: am_clock_source");break;}
+        case OUT_OF_RANGE_VALUE_SMOD: {Spn("Out of range: scan_modulus");break;}
+        case OUT_OF_RANGE_VALUE_AMPSC: {Spn("Out of range: am_prescaler");break;}
+        default: {Spn("Other error");break;}
     }
 }
 #endif // TEENSYTOUCH_SERIAL_DEBUG

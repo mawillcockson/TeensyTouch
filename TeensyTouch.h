@@ -261,6 +261,7 @@ SETUP_ERROR_CODE setup_tsi(
 #define pause_stop {while (true) {continue;}}
 
 void print_touch_register_values(void);
+void interpret_setup_error_codes(SETUP_ERROR_CODE error_number);
 #endif
 
 #endif
