@@ -13,6 +13,7 @@
 #include <Arduino.h>
 //#include <WProgram.h>
 //#include <usb_serial.h>
+#include <IntervalTimer.h>
 #include "TeensyTouch.h"
 
 
@@ -185,6 +186,8 @@ void restart_tsi(void) {
      * restarting the module?
      */
     
+    //TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
+    
     // Serial
     //Serial.println("Restarted TSI module");
     
@@ -224,8 +227,8 @@ void tsi0_isr(void) {
     // Serial
     //Serial.println("Inside ISR function");
     //Serial.print("TSI_GENCS_EOSF_VAL | (TSI_GENCS_EXTERF_VAL << 1): ");
-    Serial.println((TSI_GENCS_EOSF_VAL << 3) | (TSI_GENCS_OUTRGF_VAL << 2)
-                   | (TSI_GENCS_EXTERF_VAL << 1) | TSI_GENCS_OVRF_VAL,BIN);
+    //Serial.println((TSI_GENCS_EOSF_VAL << 3) | (TSI_GENCS_OUTRGF_VAL << 2)
+                   //| (TSI_GENCS_EXTERF_VAL << 1) | TSI_GENCS_OVRF_VAL,BIN);
     //Serial.println((uint32_t)(TSI0_GENCS),BIN);
     //print_tsi_register_values(ALL_REGISTERS);
     
@@ -233,8 +236,13 @@ void tsi0_isr(void) {
     
     (*tsi_isr_jumptable[(TSI_GENCS_EOSF_VAL |
                         (TSI_GENCS_EXTERF_VAL << 1))])();
+    
+    TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
+    
     return;
 }
+
+IntervalTimer copy_to_buff_timer;
 
 
 SETUP_ERROR_CODE setup_tsi(
@@ -284,7 +292,11 @@ SETUP_ERROR_CODE setup_tsi(
                            * am_clock_cource clock selection
                            */
     /* Instead of picking the software/hardware triggering, it's set up by picking the mode in the last argument */
-    TSI_READ_MODE tsi_read_mode) {
+    TSI_READ_MODE tsi_read_mode,
+    unsigned long interval_time /* The amount of time between buffer
+                                 * updates in microseconds
+                                 */
+    ) {
     
     // Serial
     //Serial.println("Inside setup function");
@@ -408,6 +420,9 @@ SETUP_ERROR_CODE setup_tsi(
             /* Enable interrupts */
             TSI0_GENCS |= TSI_GENCS_TSIIE; // Enable TSI interrupt module
             TSI0_GENCS |= TSI_GENCS_ERIE;  // Enable error interupts
+            
+            copy_to_buff_timer.begin(copy_to_buff,interval_time); // Run copy_to_buff() every 250ms
+            copy_to_buff_timer.priority(255); // Set for the least priority
             
             // Serial
             //Serial.println("All interrupts enabled");

@@ -18,6 +18,7 @@
 #include <Arduino.h>
 //#include <WProgram.h>
 //#include <usb_serial.h>
+#include <IntervalTimer.h>
 
 
 #define TSI_GENCS_LPCLKS_VAL    ((TSI0_GENCS << 3)  >> 31)
@@ -249,7 +250,11 @@ SETUP_ERROR_CODE setup_tsi(
                            * am_clock_cource clock selection
                            */
     /* Instead of picking the software/hardware triggering, it's set up by picking the mode in the last argument */
-    TSI_READ_MODE tsi_read_mode);
+    TSI_READ_MODE tsi_read_mode,
+    unsigned long interval_time /* The amount of time between buffer
+                                 * updates in microseconds
+                                 */
+    );
 
 #ifdef TEENSYTOUCH_SERIAL_DEBUG
 #define Sp(a)  (Serial.print(a))
