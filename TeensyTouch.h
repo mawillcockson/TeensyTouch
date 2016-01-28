@@ -267,6 +267,10 @@ SETUP_ERROR_CODE setup_tsi(
 
 void print_tsi_register_values(PRINT_MODE print_mode);
 void interpret_setup_error_codes(SETUP_ERROR_CODE error_number);
+
+/* Only temporarily exposed */
+void copy_to_buff(void);
+void restart_tsi(void);
 #endif // ifdef TEENSYTOUCH_SERIAL_DEBUG
 
 #endif // ifdef KINETISK
