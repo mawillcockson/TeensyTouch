@@ -149,7 +149,12 @@ volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
 /* Teensy:    33, 32, 25, 23, 22, 19, 18, 17, 16, 15, 1,  0 */
 /* Channel:   5,  11, 12, 15, 14, 7,  8,  6,  0,  13, 10, 9 */
 
-/* NOTE: Make an array of pointers to the result registers, and use that in both copy_to_buff, and in place of pin2buff[] */
+/* NOTE: Make an array of pointers to the result registers, and use that in both copy_to_buff, and in place of pin2buff[]
+ * Maybe done(?) */
+
+//#ifdef TEENSYTOUCH_SERIAL_DEBUG
+volatile uint32_t num_interrupt_calls = 0;
+//#endif
 
 void copy_to_buff(void) {
     
@@ -161,7 +166,7 @@ void copy_to_buff(void) {
     
     /* Copy pin values directly from the registers into the buffer array */
     uint32_t i;
-    for (i = 0; i < 33; ++i) {
+    for (i = 0; i < 34; ++i) {
         buff[i] = (*pin2cntr[i]);
         
         // Serial
@@ -173,6 +178,8 @@ void copy_to_buff(void) {
     
     // Serial
     //Serial.println("Copied pin values to buffer");
+    num_interrupt_calls += 1;
+    //Serial.print(".");
     
     return;
 }
@@ -190,6 +197,8 @@ void restart_tsi(void) {
     
     // Serial
     //Serial.println("Restarted TSI module");
+    num_interrupt_calls += 1;
+    //Serial.print(".");
     
     return;
 }
@@ -197,7 +206,8 @@ void restart_tsi(void) {
 void do_nothing_tsi(void) {noop;return;}
 
 void (*(tsi_isr_jumptable[4]))(void) = {*do_nothing_tsi, // Default: no flags set, but ISR is called???
-                                       *copy_to_buff, // Just the End-of-Scan flag is set, so do the copy
+                                       //*copy_to_buff, // Just the End-of-Scan flag is set, so do the copy
+                                       *do_nothing_tsi, // Actually, do nothing instead, since IntervalTimer call copy_to_buff now
                                        *restart_tsi, // Just the error flag is set, so restart the TSI module
                                        *restart_tsi // Restart the TSI module even if both flags are set, as it's pointless to copy at the end of a scan if there's an error
                                        }; // An array of pointers to functions taking void and returning void
@@ -238,6 +248,10 @@ void tsi0_isr(void) {
                         (TSI_GENCS_EXTERF_VAL << 1))])();
     
     TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
+    
+    // Serial
+    num_interrupt_calls += 1;
+    //Serial.print(".");
     
     return;
 }

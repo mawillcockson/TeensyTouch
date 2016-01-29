@@ -271,6 +271,7 @@ void interpret_setup_error_codes(SETUP_ERROR_CODE error_number);
 /* Only temporarily exposed */
 void copy_to_buff(void);
 void restart_tsi(void);
+extern volatile uint32_t num_interrupt_calls;
 #endif // ifdef TEENSYTOUCH_SERIAL_DEBUG
 
 #endif // ifdef KINETISK
