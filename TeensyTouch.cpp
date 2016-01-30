@@ -153,7 +153,7 @@ volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
  * Maybe done(?) */
 
 //#ifdef TEENSYTOUCH_SERIAL_DEBUG
-volatile uint32_t num_interrupt_calls = 0;
+//volatile uint32_t num_interrupt_calls = 0;
 //#endif
 
 void copy_to_buff(void) {
@@ -178,7 +178,7 @@ void copy_to_buff(void) {
     
     // Serial
     //Serial.println("Copied pin values to buffer");
-    num_interrupt_calls += 1;
+    //num_interrupt_calls += 1;
     //Serial.print(".");
     
     return;
@@ -197,7 +197,7 @@ void restart_tsi(void) {
     
     // Serial
     //Serial.println("Restarted TSI module");
-    num_interrupt_calls += 1;
+    //num_interrupt_calls += 1;
     //Serial.print(".");
     
     return;
@@ -225,13 +225,26 @@ uint16_t touchVal(uint8_t pin) {
     }
 }
 
+
+/* This is a pointer to a function taking no arguments and returning
+ * void, and is used in tsi0_isr() to configurably set which function is
+ * actually called.
+ */
+//typedef void (*voidFuncPointer)(void);
+//volatile voidFuncPointer interrupt_function = do_nothing_tsi;
+void (*interrupt_function)(void) = do_nothing_tsi;
+
 void tsi0_isr(void) {
-    /* This is the function that is run every time an interrupt is
-     * triggered by the TSI module, regardless of what kind of interrupt
-     * it was.
-     * 
-     * This function tries to efficiently decide what to do, and uses a
-     * jump table to efficiently call a function to do that.
+    /* This function is called as the Interrupt Service Routine for any
+     * and all TSI-generated interrupts.
+     */
+    (*interrupt_function)();
+}
+
+void hardware_poll_tsi(void) {
+    /* This function tries to efficiently decide what to do for the
+     * hardware polling method, and uses a jump table to efficiently
+     * call a function to do that.
      */
     
     // Serial
@@ -250,7 +263,7 @@ void tsi0_isr(void) {
     TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
     
     // Serial
-    num_interrupt_calls += 1;
+    //num_interrupt_calls += 1;
     //Serial.print(".");
     
     return;
@@ -434,6 +447,9 @@ SETUP_ERROR_CODE setup_tsi(
             /* Enable interrupts */
             TSI0_GENCS |= TSI_GENCS_TSIIE; // Enable TSI interrupt module
             TSI0_GENCS |= TSI_GENCS_ERIE;  // Enable error interupts
+            
+            /* Set which function is called on a TSI interrupt */
+            interrupt_function = hardware_poll_tsi;
             
             copy_to_buff_timer.begin(copy_to_buff,interval_time); // Run copy_to_buff() every 250ms
             copy_to_buff_timer.priority(255); // Set for the least priority
