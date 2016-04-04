@@ -70,7 +70,8 @@ void tsi_start(void) {
  * - - Interrupts caused only by GENCS[OVRF] should be ignored.
  */
 
-uint16_t buff[] = {1, // 0
+//volatile uint16_t buff[] = {1, // 0
+uint16_t buff[] = {1, // Probably should be marked as volatile, but touchVal() returns faster if not
                    1, // 1
                    1,
                    1,
@@ -157,7 +158,6 @@ volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
 //#endif
 
 void copy_to_buff(void) {
-    
     // Serial
     //tsi_start();
     //Serial.println("Inside copy_to_buff");
@@ -179,7 +179,7 @@ void copy_to_buff(void) {
     // Serial
     //Serial.println("Copied pin values to buffer");
     //num_interrupt_calls += 1;
-    //Serial.print(".");
+    //Serial.print(",");
     
     return;
 }
@@ -193,12 +193,13 @@ void restart_tsi(void) {
      * restarting the module?
      */
     
-    //TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
+    TSI0_GENCS &= ~TSI_GENCS_ESOR(1); // Just to make sure it's set to out-of-range
     
     // Serial
     //Serial.println("Restarted TSI module");
     //num_interrupt_calls += 1;
     //Serial.print(".");
+    //print_tsi_register_values(ALL_REGISTERS);
     
     return;
 }
@@ -218,7 +219,13 @@ void (*(tsi_isr_jumptable[4]))(void) = {*do_nothing_tsi, // Default: no flags se
 //uint8_t valid_pin_numbers[] = {1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1};
 uint16_t touchVal(uint8_t pin) {
     //if ((pin < 34) && (valid_pin_numbers[pin])) { // Valid pin checking unnecessary as buff has 34 indices currently
+    //uint16_t buff_copy[34];
+    //for (uint32_t i = 0; i < 34; ++i) {
+        //buff_copy[i] = buff[i];
+    //}
+    
     if (pin < 34) {
+        //return buff_copy[pin];
         return buff[pin];
     } else {
         return 0;

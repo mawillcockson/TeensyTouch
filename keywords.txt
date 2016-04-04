@@ -1,1 +1,7 @@
-tsi_stop    KEYWORD1
+tsi_stop    KEYWORD2
+tsi_start    KEYWORD2
+tsi_start_scan    KEYWORD2
+wait    KEYWORD2
+touchVal    KEYWORD2
+setup_tsi    KEYWORD2
+TEENSYTOUCH_SERIAL_DEBUG KEYWORD1
