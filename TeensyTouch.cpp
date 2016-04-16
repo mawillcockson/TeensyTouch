@@ -128,7 +128,7 @@ volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
                         &default_pin2cntr_val,
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 13), // 15
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 0), // 16
-                        ((volatile uint16_t *)(&TSI0_CNTR1) + 10), // 17
+                        ((volatile uint16_t *)(&TSI0_CNTR1) + 6), // 17
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 8), // 18
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 7), // 19
                         &default_pin2cntr_val,
