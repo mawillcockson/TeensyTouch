@@ -1,14 +1,16 @@
+/* Author: Matthew W
+ * License: Public domain
+ */
+
 // Serial
 #define Sp(a)  (Serial.print(a))
 #define Spn(a) (Serial.println(a))
 #define tab    (Sp("\t"))
 #define nl     (Sp("\n"))
-#define serial_on (true)
 
 #define noop {asm volatile ("nop");}
 #define stop {while (1) {continue;}}
 
-#include <kinetis.h>
 #define TEENSYTOUCH_SERIAL_DEBUG
 #include <TeensyTouch.h>
 
@@ -136,11 +138,6 @@ void loop() {
     }
     end_time = micros();
     unsigned long isrs_loop_time = (end_time - start_time);
-    
-    //Sp("Blank loop: ");Spn(blank_loop_time);
-    //Sp("Local var loop:    ");Sp(local_loop_time);Sp("  ");Spn(local_loop_time - blank_loop_time);
-    //Sp("Global var loop:   ");Sp(global_loop_time);Sp("  ");Spn(global_loop_time - blank_loop_time);
-    //Sp("Assigned var loop: ");Sp(assigned_loop_time);Sp("  ");Spn(assigned_loop_time - blank_loop_time);
     
     Sp("Blank loop: ");Spn(blank_loop_time/float(reps));
     Sp("Local var loop:    ");Sp(local_loop_time/float(reps));Sp("  ");Spn((local_loop_time - blank_loop_time)/float(reps));

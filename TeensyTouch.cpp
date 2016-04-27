@@ -71,78 +71,78 @@ void tsi_start(void) {
  */
 
 //volatile uint16_t buff[] = {1, // 0
-uint16_t buff[] = {1, // Probably should be marked as volatile, but touchVal() returns faster if not
+uint16_t buff[12] = {1, // Probably should be marked as volatile, but touchVal() returns faster if not
                    1, // 1
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
                    1, // 15
                    1, // 16
                    1, // 17
                    1, // 18
                    1, // 19
-                   1,
-                   1,
+                   //1,
+                   //1,
                    1, // 22
                    1, // 23
-                   1,
+                   //1,
                    1, // 25
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
-                   1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
+                   //1,
                    1, // 32
                    1 // 33
                    };
 
-uint16_t default_pin2cntr_val = 1;
+//uint16_t default_pin2cntr_val = 1;
 /* This array holds pointers to the TSI0_CNTRn registers at the index corresponding to the Tensy pin for which they hold a capacitance value.
  * That is to say, at index 23 is the location in the chip's memory which holds Teensy pin 23's current capacitance value
  */
-volatile uint16_t* pin2cntr[] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
+volatile uint16_t* pin2cntr[12] = {((volatile uint16_t *)(&TSI0_CNTR1) + 9), // 0
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 10), // 1
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 13), // 15
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 0), // 16
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 6), // 17
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 8), // 18
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 7), // 19
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 14), // 22
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 15), // 23
-                        &default_pin2cntr_val,
+                        //&default_pin2cntr_val,
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 12), // 25
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
-                        &default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
+                        //&default_pin2cntr_val,
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 11), // 32
                         ((volatile uint16_t *)(&TSI0_CNTR1) + 5), // 33
                         };
@@ -166,7 +166,7 @@ void copy_to_buff(void) {
     
     /* Copy pin values directly from the registers into the buffer array */
     uint32_t i;
-    for (i = 0; i < 34; ++i) {
+    for (i = 0; i < 12; ++i) {
         buff[i] = (*pin2cntr[i]);
         
         // Serial
@@ -224,11 +224,27 @@ uint16_t touchVal(uint8_t pin) {
         //buff_copy[i] = buff[i];
     //}
     
-    if (pin < 34) {
+    //if (pin < 34) {
         //return buff_copy[pin];
-        return buff[pin];
-    } else {
-        return 0;
+        //return buff[pin];
+    //} else {
+        //return 0;
+    //}
+    
+    switch (pin) {
+        case 0: return buff[0];
+        case 1: return buff[1];
+        case 15: return buff[2];
+        case 16: return buff[3];
+        case 17: return buff[4];
+        case 18: return buff[5];
+        case 19: return buff[6];
+        case 22: return buff[7];
+        case 23: return buff[8];
+        case 25: return buff[9];
+        case 32: return buff[10];
+        case 33: return buff[11];
+        default: return 0;
     }
 }
 
