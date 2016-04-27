@@ -246,6 +246,25 @@ uint16_t touchVal(uint8_t pin) {
         case 33: return buff[11];
         default: return 0;
     }
+    
+    //uint16_t out = 0;
+        //
+    //switch (pin) {
+        //case 0: out = buff[0];break;
+        //case 1: out = buff[1];break;
+        //case 15: out = buff[2];break;
+        //case 16: out = buff[3];break;
+        //case 17: out = buff[4];break;
+        //case 18: out = buff[5];break;
+        //case 19: out = buff[6];break;
+        //case 22: out = buff[7];break;
+        //case 23: out = buff[8];break;
+        //case 25: out = buff[9];break;
+        //case 32: out = buff[10];break;
+        //case 33: out = buff[11];break;
+    //}
+    //
+    //return out;
 }
 
 
