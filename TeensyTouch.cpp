@@ -42,8 +42,20 @@ void tsi_stop(void) {
 }
 
 void tsi_start(void) {
-    *portConfigRegister(0) = PORT_PCR_MUX(0); // Need to figure out what this line does
+    //*portConfigRegister(0) = PORT_PCR_MUX(0); // Need to figure out what this line does
+    /* I think the above line configures pin 0's (on the board pinout,
+     * not chip pinout) PORTx_PCRn[MUX] value, and disabling all digital
+     * functions on that pin, and/or setting it to analog...
+     * 
+     * I think this is set to something ifferent by digitalWrite, and
+     * thus interferes with the pins function.
+     */
     SIM_SCGC5 |= SIM_SCGC5_TSI;               // And this one, too
+    /* I think the above line of code enables the clock gate of the TSI
+     * modile so it can be used.
+     * 
+     * I don't think anything turns this off.
+     */
     //TSI0_GENCS = TSI0_GENCS | TSI_GENCS_TSIEN;
     TSI0_GENCS |= TSI_GENCS_TSIEN; // Enables TSI module
     wait(79);
@@ -507,7 +519,36 @@ SETUP_ERROR_CODE setup_tsi(
             break;
         }
         case SOFTWARE_TRIGGER: {
+            /* This mode sets up the TSI module for optimal scanning in
+             * the background, interrupting only to cope with errors,
+             * and to copy to the buffer.
+             * 
+             * NOTE: Set SCANC[SMOD] and SCANC[AMCLKS] based on testing
+             * and number of pins enabled
+             * 
+             * Test if a pin is enabled by looking at the data pointed
+             * to by a specific bit's memory register in the PEN register
+             */
+            TSI0_GENCS |= TSI_GENCS_STM(1); // Periodical scan
+            /* Disable end-of-scan interrupts from flooding the
+             * processor by switching to out-of-range interrupt, which
+             * is only generated in low-power mode
+             */
+            TSI0_GENCS &= ~TSI_GENCS_ESOR(1);       // Valid values: {0,1}
+            /* Enable interrupts */
+            TSI0_GENCS &= TSI_GENCS_TSIIE; // Disable TSI interrupt module
+            TSI0_GENCS |= TSI_GENCS_ERIE;  // Disable error interupts
             
+            /* Set which function is called on a TSI interrupt */
+            interrupt_function = hardware_poll_tsi;
+            
+            copy_to_buff_timer.begin(copy_to_buff,interval_time); // Run copy_to_buff() every 250ms
+            copy_to_buff_timer.priority(255); // Set for the least priority
+            
+            // Serial
+            //Serial.println("All interrupts enabled");
+            
+            break;
             break;
         }
     }
