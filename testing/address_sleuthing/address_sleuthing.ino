@@ -12,6 +12,8 @@
 #define noop {asm volatile ("nop");}
 #define stop {while (1) {continue;}}
 
+#define GPIO_BITBAND_ADDR(reg, bit) (((uint32_t)&(reg) - 0x40000000) * 32 + (bit) * 4 + 0x42000000)
+
 void setup() {
     //Serial
     Serial.begin(9600);
@@ -25,6 +27,8 @@ void setup() {
         Sp("portModeRegister("+String(i)+"): ");Sphn((uint32_t)portModeRegister(i));
     }
     Sp("portOutputRegister(0): ");Sphn((uint32_t)portOutputRegister(0));
+    Sp("GPIO_BITBAND_ADDR(CORE_PIN2_PORTREG, CORE_PIN2_BIT): ");Sphn(GPIO_BITBAND_ADDR(CORE_PIN2_PORTREG, CORE_PIN2_BIT));
+    Sp("portOutputRegister(2): ");Sphn((uint32_t)portOutputRegister(2));
     //digitalWrite
 }
 

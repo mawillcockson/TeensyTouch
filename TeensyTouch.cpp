@@ -17,6 +17,7 @@
 #include "TeensyTouch.h"
 
 
+
 #if (!defined(TSI_PERIODIC))
 #endif
 
@@ -42,7 +43,7 @@ void tsi_stop(void) {
 }
 
 void tsi_start(void) {
-    //*portConfigRegister(0) = PORT_PCR_MUX(0); // Need to figure out what this line does
+    *portConfigRegister(0) = PORT_PCR_MUX(0); // Need to figure out what this line does
     /* I think the above line configures pin 0's (on the board pinout,
      * not chip pinout) PORTx_PCRn[MUX] value, and disabling all digital
      * functions on that pin, and/or setting it to analog...
@@ -280,6 +281,19 @@ uint16_t touchVal(uint8_t pin) {
 }
 
 
+//static const uint8_t pin2tsi[] = {
+0    1    2    3    4    5    6    7    8    9
+  //9,  10, 255, 255, 255, 255, 255, 255, 255, 255,
+//255, 255, 255, 255, 255,  13,   0,   6,   8,   7,
+//255, 255,  14,  15, 255,  12, 255, 255, 255, 255,
+//255, 255,  11,   5
+//};
+//
+//uint16_t touchValNowIS(uint8_t pin) { // The "I'm sure I know what I'm doing when I call this" speedy function
+    //return *((volatile uint16_t *)(&TSI0_CNTR1) + pin2tsi[pin]);
+//}
+
+
 /* This is a pointer to a function taking no arguments and returning
  * void, and is used in tsi0_isr() to configurably set which function is
  * actually called.
@@ -505,7 +519,7 @@ SETUP_ERROR_CODE setup_tsi(
             /* Set which function is called on a TSI interrupt */
             interrupt_function = hardware_poll_tsi;
             
-            copy_to_buff_timer.begin(copy_to_buff,interval_time); // Run copy_to_buff() every 250ms
+            copy_to_buff_timer.begin(copy_to_buff,interval_time); // Run copy_to_buff() every interval_time ms
             copy_to_buff_timer.priority(255); // Set for the least priority
             
             // Serial

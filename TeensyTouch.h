@@ -157,6 +157,11 @@ void tsi_stop(void);
  */
 uint16_t touchVal(uint8_t pin);
 
+/* If you're sure you have pin numbers correct, this one should return
+ * in a couple cycles, I think
+ */
+//uint16_t touchValNowIS(uint8_t pin);
+
 /* Lists return values of the setup_tsi() function as types */
 typedef enum SETUP_ERROR_CODES {NORMAL,
                                 OUT_OF_RANGE_VALUE,
